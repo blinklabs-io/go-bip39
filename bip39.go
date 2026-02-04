@@ -51,7 +51,7 @@ var (
 	}
 
 	// wordList is the set of words to use
-	wordList []string
+	wordList = []string{}
 
 	// wordMap is a reverse lookup map for wordList
 	wordMap map[string]int
@@ -81,6 +81,9 @@ func init() {
 // SetWordList sets the list of words to use for mnemonics. Currently the list
 // that is set is used package-wide.
 func SetWordList(list []string) {
+	if list == nil {
+		return
+	}
 	wordList = list
 	wordMap = map[string]int{}
 	for i, v := range wordList {
