@@ -56,5 +56,5 @@ This library is a revival of the original [tyler-smith/go-bip39](https://github.
 
 MIT License - see [LICENSE](LICENSE) for details.
 
-Original work Copyright (c) 2014-2018 Tyler Smith and contributors
-Modified work Copyright (c) 2026 Blink Labs Software
+- Original work Copyright (c) 2014-2018 Tyler Smith and contributors
+- Modified work Copyright (c) 2026 Blink Labs Software
