@@ -59,19 +59,19 @@ var (
 
 var (
 	// ErrInvalidMnemonic is returned when trying to use a malformed mnemonic.
-	ErrInvalidMnemonic = errors.New("Invalid mnenomic")
+	ErrInvalidMnemonic = errors.New("invalid mnemonic")
 
 	// ErrEntropyLengthInvalid is returned when trying to use an entropy set with
 	// an invalid size.
-	ErrEntropyLengthInvalid = errors.New("Entropy length must be [128, 256] and a multiple of 32")
+	ErrEntropyLengthInvalid = errors.New("entropy length must be [128, 256] and a multiple of 32")
 
 	// ErrValidatedSeedLengthMismatch is returned when a validated seed is not the
 	// same size as the given seed. This should never happen is present only as a
 	// sanity assertion.
-	ErrValidatedSeedLengthMismatch = errors.New("Seed length does not match validated seed length")
+	ErrValidatedSeedLengthMismatch = errors.New("seed length does not match validated seed length")
 
 	// ErrChecksumIncorrect is returned when entropy has the incorrect checksum.
-	ErrChecksumIncorrect = errors.New("Checksum incorrect")
+	ErrChecksumIncorrect = errors.New("checksum incorrect")
 )
 
 func init() {
@@ -127,7 +127,7 @@ func EntropyFromMnemonic(mnemonic string) ([]byte, error) {
 	b := big.NewInt(0)
 	for _, v := range mnemonicSlice {
 		index, found := wordMap[v]
-		if found == false {
+		if !found {
 			return nil, fmt.Errorf("word `%v` not found in reverse map", v)
 		}
 		var wordBytes [2]byte
