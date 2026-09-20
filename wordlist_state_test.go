@@ -88,7 +88,8 @@ func TestSetWordListIgnoresNil(t *testing.T) {
 	SetWordList(nil)
 
 	assertEqualStringSlices(t, wordlists.English, GetWordList())
-	idx, ok := GetWordIndex(wordlists.English[0])
+	// BIP-39 fixes the English list, so "abandon" is its index 0.
+	idx, ok := GetWordIndex("abandon")
 	assertTrue(t, ok)
 	assertEqual(t, idx, 0)
 	assertTrue(t, IsMnemonicValid(whitespaceVectorMnemonic))
