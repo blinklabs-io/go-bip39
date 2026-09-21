@@ -280,16 +280,31 @@ func NewSeedWithErrorChecking(mnemonic string, password string) ([]byte, error) 
 
 // NewSeed creates a hashed seed output given a provided string and password.
 // Both are normalized to NFKD, as BIP-39 requires, before the PBKDF2
-// derivation. No checking is performed to validate that the string provided is
-// a valid mnemonic.
+// derivation, and the mnemonic is reduced to its canonical spacing so that a
+// sentence this package accepts derives the seed every other implementation
+// associates with it. The password is hashed exactly as given, since a
+// passphrase's own spacing is part of it. No checking is performed to validate
+// that the string provided is a valid mnemonic.
 func NewSeed(mnemonic string, password string) []byte {
 	return pbkdf2.Key(
-		[]byte(normalizeString(mnemonic)),
+		[]byte(canonicalMnemonic(mnemonic)),
 		[]byte("mnemonic"+normalizeString(password)),
 		2048,
 		64,
 		sha512.New,
 	)
+}
+
+// canonicalMnemonic returns the sentence BIP-39 derives a seed from: the words
+// of the NFKD normalization joined by one U+0020. Hashing the caller's own
+// spacing instead would place the seed where no other implementation looks,
+// because every one of them derives from this form - python-mnemonic and
+// bitcoinjs/bip39 reject any other spacing outright, and rust-bip39 rebuilds
+// the sentence from the words it parsed. No word list entry contains
+// whitespace, so collapsing separator runs cannot merge or lose a word, and
+// the reduction is the identity on an already-canonical sentence.
+func canonicalMnemonic(mnemonic string) string {
+	return strings.Join(mnemonicWords(mnemonic), " ")
 }
 
 // normalizeString applies the NFKD normalization BIP-39 mandates for the
@@ -378,14 +393,21 @@ func compareByteSlices(a, b []byte) bool {
 	return true
 }
 
-// splitMnemonicWords is the only tokenizer in this package. Normalization runs
-// first because BIP-39 defines the word separator on the normalized sentence:
-// the ideographic space U+3000 that the Japanese vectors use decomposes to a
-// plain U+0020 under NFKD, so splitting before normalizing would disagree with
-// the sentence that NewSeed hashes.
+// mnemonicWords is the only tokenizer in this package, and the one canonical
+// spacing is defined against. Normalization runs first because BIP-39 defines
+// the word separator on the normalized sentence: the ideographic space U+3000
+// that the Japanese vectors use decomposes to a plain U+0020 under NFKD, so
+// splitting before normalizing would disagree with the sentence NewSeed
+// hashes.
+func mnemonicWords(mnemonic string) []string {
+	return strings.Fields(normalizeString(mnemonic))
+}
+
+// splitMnemonicWords tokenizes a sentence and reports whether its word count
+// is one BIP-39 allows.
 func splitMnemonicWords(mnemonic string) ([]string, bool) {
 	// Create a list of all the words in the mnemonic sentence
-	words := strings.Fields(normalizeString(mnemonic))
+	words := mnemonicWords(mnemonic)
 
 	// Get num of words
 	numOfWords := len(words)
