@@ -26,8 +26,9 @@ func init() {
 
 // French is a slice of mnemonic words taken from the bip39 specification
 // https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/french.txt
-var French = strings.Split(strings.TrimSpace(french), "\n")
-var french = `abaisser
+var (
+	French = strings.Split(strings.TrimSpace(french), "\n")
+	french = `abaisser
 abandon
 abdiquer
 abeille
@@ -2076,3 +2077,4 @@ zénith
 zeste
 zoologie
 `
+)
