@@ -23,6 +23,7 @@ import (
 
 	"github.com/blinklabs-io/go-bip39/wordlists"
 	"golang.org/x/crypto/pbkdf2"
+	"golang.org/x/text/unicode/norm"
 )
 
 var (
@@ -218,8 +219,12 @@ func NewMnemonic(entropy []byte) (string, error) {
 // suitable for creating another mnemonic.
 // An error is returned if the mnemonic is invalid.
 func MnemonicToByteArray(mnemonic string, raw ...bool) ([]byte, error) {
+	mnemonicSlice, isWellFormed := splitMnemonicWords(mnemonic)
+	if !isWellFormed {
+		return nil, ErrInvalidMnemonic
+	}
+
 	var (
-		mnemonicSlice    = strings.Split(mnemonic, " ")
 		entropyBitSize   = len(mnemonicSlice) * 11
 		checksumBitSize  = entropyBitSize % 32
 		fullByteSize     = (entropyBitSize-checksumBitSize)/8 + 1
@@ -274,9 +279,27 @@ func NewSeedWithErrorChecking(mnemonic string, password string) ([]byte, error) 
 }
 
 // NewSeed creates a hashed seed output given a provided string and password.
-// No checking is performed to validate that the string provided is a valid mnemonic.
+// Both are normalized to NFKD, as BIP-39 requires, before the PBKDF2
+// derivation. No checking is performed to validate that the string provided is
+// a valid mnemonic.
 func NewSeed(mnemonic string, password string) []byte {
-	return pbkdf2.Key([]byte(mnemonic), []byte("mnemonic"+password), 2048, 64, sha512.New)
+	return pbkdf2.Key(
+		[]byte(normalizeString(mnemonic)),
+		[]byte("mnemonic"+normalizeString(password)),
+		2048,
+		64,
+		sha512.New,
+	)
+}
+
+// normalizeString applies the NFKD normalization BIP-39 mandates for the
+// mnemonic sentence and the passphrase. It is the identity on ASCII, so seeds
+// derived from ASCII inputs are unaffected. The bundled word lists are already
+// in NFKD form, so normalizing before word lookup also lets a composed
+// mnemonic - the form the published Japanese vectors are written in - resolve
+// against them.
+func normalizeString(s string) string {
+	return norm.NFKD.String(s)
 }
 
 // IsMnemonicValid attempts to verify that the provided mnemonic is valid.
@@ -355,9 +378,14 @@ func compareByteSlices(a, b []byte) bool {
 	return true
 }
 
+// splitMnemonicWords is the only tokenizer in this package. Normalization runs
+// first because BIP-39 defines the word separator on the normalized sentence:
+// the ideographic space U+3000 that the Japanese vectors use decomposes to a
+// plain U+0020 under NFKD, so splitting before normalizing would disagree with
+// the sentence that NewSeed hashes.
 func splitMnemonicWords(mnemonic string) ([]string, bool) {
 	// Create a list of all the words in the mnemonic sentence
-	words := strings.Fields(mnemonic)
+	words := strings.Fields(normalizeString(mnemonic))
 
 	// Get num of words
 	numOfWords := len(words)
