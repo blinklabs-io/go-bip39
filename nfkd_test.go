@@ -115,15 +115,15 @@ func TestNewSeedTrezorJapaneseVectors(t *testing.T) {
 // TestNewSeedASCIIUnchanged pins the compatibility half of the contract: NFKD
 // is the identity on ASCII, so no already-derived ASCII seed may move. The
 // expected value is the pre-normalization derivation, recomputed here rather
-// than read from NewSeed.
+// than read from NewSeed. Every sentence here is already canonically spaced,
+// which is what leaves it fixed; TestNewSeedCanonicalSpacing covers the
+// sentences whose seed does move, onto the one the canonical form derives.
 func TestNewSeedASCIIUnchanged(t *testing.T) {
 	t.Parallel()
 	mnemonics := []string{
 		"",
 		"abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
-		"abandon  abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
-		"abandon\tabandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about\n",
-		" leading and trailing ",
+		"leading and trailing",
 		"!\"#$%&'()*+,-./0123456789:;<=>?@ABCXYZ[\\]^_`abcxyz{|}~",
 	}
 	passwords := []string{"", "TREZOR", "  ", "p@ssw0rd\t\n", "~!?"}
