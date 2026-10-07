@@ -113,11 +113,9 @@ func TestNewSeedTrezorJapaneseVectors(t *testing.T) {
 }
 
 // TestNewSeedASCIIUnchanged pins the compatibility half of the contract: NFKD
-// is the identity on ASCII, so no already-derived ASCII seed may move. The
-// expected value is the pre-normalization derivation, recomputed here rather
-// than read from NewSeed. Every sentence here is already canonically spaced,
-// which is what leaves it fixed; TestNewSeedCanonicalSpacing covers the
-// sentences whose seed does move, onto the one the canonical form derives.
+// is the identity on ASCII, so ASCII seed inputs retain their previous
+// derivation, including their whitespace. The expected value is recomputed
+// from the original input rather than read from NewSeed.
 func TestNewSeedASCIIUnchanged(t *testing.T) {
 	t.Parallel()
 	mnemonics := []string{

@@ -280,26 +280,17 @@ func NewSeedWithErrorChecking(mnemonic string, password string) ([]byte, error) 
 
 // NewSeed creates a hashed seed output given a provided string and password.
 // Both are normalized to NFKD, as BIP-39 requires, before the PBKDF2
-// derivation, and the mnemonic is reduced to its canonical spacing. The
-// password keeps its own spacing, since that is part of the passphrase. No
-// checking is performed to validate that the string provided is
-// a valid mnemonic.
+// derivation. The mnemonic's whitespace is preserved. The password keeps its
+// own spacing, since that is part of the passphrase. No checking is performed
+// to validate that the string provided is a valid mnemonic.
 func NewSeed(mnemonic string, password string) []byte {
 	return pbkdf2.Key(
-		[]byte(canonicalMnemonic(mnemonic)),
+		[]byte(normalizeString(mnemonic)),
 		[]byte("mnemonic"+normalizeString(password)),
 		2048,
 		64,
 		sha512.New,
 	)
-}
-
-// canonicalMnemonic returns the sentence a seed is derived from: the words of
-// the NFKD normalization joined by one U+0020. No word list entry contains
-// whitespace, so collapsing separator runs cannot merge or lose a word, and
-// the reduction is the identity on an already-canonical sentence.
-func canonicalMnemonic(mnemonic string) string {
-	return strings.Join(mnemonicWords(mnemonic), " ")
 }
 
 // normalizeString applies the NFKD normalization BIP-39 mandates for the
