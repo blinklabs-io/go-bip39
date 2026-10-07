@@ -280,8 +280,9 @@ func NewSeedWithErrorChecking(mnemonic string, password string) ([]byte, error) 
 
 // NewSeed creates a hashed seed output given a provided string and password.
 // Both are normalized to NFKD, as BIP-39 requires, before the PBKDF2
-// derivation. No checking is performed to validate that the string provided is
-// a valid mnemonic.
+// derivation. The mnemonic's whitespace is preserved. The password keeps its
+// own spacing, since that is part of the passphrase. No checking is performed
+// to validate that the string provided is a valid mnemonic.
 func NewSeed(mnemonic string, password string) []byte {
 	return pbkdf2.Key(
 		[]byte(normalizeString(mnemonic)),
@@ -378,14 +379,19 @@ func compareByteSlices(a, b []byte) bool {
 	return true
 }
 
-// splitMnemonicWords is the only tokenizer in this package. Normalization runs
+// mnemonicWords is the only tokenizer in this package. Normalization runs
 // first because BIP-39 defines the word separator on the normalized sentence:
-// the ideographic space U+3000 that the Japanese vectors use decomposes to a
-// plain U+0020 under NFKD, so splitting before normalizing would disagree with
-// the sentence that NewSeed hashes.
+// the ideographic space U+3000 decomposes to a plain U+0020 under NFKD, so
+// splitting before normalizing would disagree with the sentence NewSeed hashes.
+func mnemonicWords(mnemonic string) []string {
+	return strings.Fields(normalizeString(mnemonic))
+}
+
+// splitMnemonicWords tokenizes a sentence and reports whether its word count
+// is one BIP-39 allows.
 func splitMnemonicWords(mnemonic string) ([]string, bool) {
 	// Create a list of all the words in the mnemonic sentence
-	words := strings.Fields(normalizeString(mnemonic))
+	words := mnemonicWords(mnemonic)
 
 	// Get num of words
 	numOfWords := len(words)
