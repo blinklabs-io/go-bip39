@@ -280,8 +280,9 @@ func NewSeedWithErrorChecking(mnemonic string, password string) ([]byte, error) 
 
 // NewSeed creates a hashed seed output given a provided string and password.
 // Both are normalized to NFKD, as BIP-39 requires, before the PBKDF2
-// derivation. No checking is performed to validate that the string provided is
-// a valid mnemonic.
+// derivation. The mnemonic's whitespace is preserved. The password keeps its
+// own spacing, since that is part of the passphrase. No checking is performed
+// to validate that the string provided is a valid mnemonic.
 func NewSeed(mnemonic string, password string) []byte {
 	return pbkdf2.Key(
 		[]byte(normalizeString(mnemonic)),
