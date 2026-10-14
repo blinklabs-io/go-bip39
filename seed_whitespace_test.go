@@ -10,9 +10,9 @@ import (
 )
 
 // The first English vector of BIP-39, entropy 0x00 repeated, passphrase
-// "TREZOR". Pinned rather than recomputed: the point of these tests is that a
-// non-canonically spaced sentence reaches the published seed, so deriving the
-// expectation from NewSeed would assert nothing.
+// "TREZOR". The published seed is asserted for the canonical sentence; the
+// whitespace variants are compared against an independent PBKDF2 derivation
+// of their own NFKD-normalized input.
 const (
 	canonicalVectorMnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
 	canonicalVectorEntropy  = "00000000000000000000000000000000"
@@ -45,7 +45,7 @@ func TestNewSeedMnemonicWhitespacePreserved(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			if !IsMnemonicValid(mnemonic) {
-				t.Fatalf("mnemonic %q rejected; the seed hazard only exists because it is accepted", mnemonic)
+				t.Fatalf("mnemonic %q must validate as the same words as the canonical sentence", mnemonic)
 			}
 			entropy, err := EntropyFromMnemonic(mnemonic)
 			if err != nil {
@@ -73,9 +73,12 @@ func TestNewSeedMnemonicWhitespacePreserved(t *testing.T) {
 			}
 		})
 	}
+	if got := hex.EncodeToString(NewSeed(canonicalVectorMnemonic, "TREZOR")); got != canonicalVectorSeed {
+		t.Errorf("canonical seed: got %s, want %s", got, canonicalVectorSeed)
+	}
 	spaced := strings.Replace(canonicalVectorMnemonic, " ", "  ", 1)
 	if compareByteSlices(NewSeed(canonicalVectorMnemonic, "TREZOR"), NewSeed(spaced, "TREZOR")) {
-		t.Error("mnemonic spacing did not affect the derived seed")
+		t.Error("seed ignored mnemonic spacing; derivation must hash the normalized input as given")
 	}
 	if got := NewSeed(lastSep("\u3000"), "TREZOR"); !compareByteSlices(got, NewSeed(canonicalVectorMnemonic, "TREZOR")) {
 		t.Error("NFKD-equivalent ideographic separator changed the derived seed")

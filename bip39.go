@@ -379,19 +379,14 @@ func compareByteSlices(a, b []byte) bool {
 	return true
 }
 
-// mnemonicWords is the only tokenizer in this package. Normalization runs
+// splitMnemonicWords is the only tokenizer in this package. Normalization runs
 // first because BIP-39 defines the word separator on the normalized sentence:
-// the ideographic space U+3000 decomposes to a plain U+0020 under NFKD, so
-// splitting before normalizing would disagree with the sentence NewSeed hashes.
-func mnemonicWords(mnemonic string) []string {
-	return strings.Fields(normalizeString(mnemonic))
-}
-
-// splitMnemonicWords tokenizes a sentence and reports whether its word count
-// is one BIP-39 allows.
+// the ideographic space U+3000 that the Japanese vectors use decomposes to a
+// plain U+0020 under NFKD, so splitting before normalizing would disagree with
+// the sentence that NewSeed hashes.
 func splitMnemonicWords(mnemonic string) ([]string, bool) {
 	// Create a list of all the words in the mnemonic sentence
-	words := mnemonicWords(mnemonic)
+	words := strings.Fields(normalizeString(mnemonic))
 
 	// Get num of words
 	numOfWords := len(words)
