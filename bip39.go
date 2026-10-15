@@ -121,10 +121,6 @@ func ValidateWordList(list []string) error {
 	return nil
 }
 
-func init() {
-	SetWordList(wordlists.English)
-}
-
 // SetWordList sets the list of words to use for mnemonics. Currently the list
 // that is set is used package-wide. The list is copied, so later changes to
 // the caller's slice do not affect the package. A nil list, or one that fails

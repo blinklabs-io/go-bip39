@@ -99,6 +99,17 @@ func TestWordListConcurrentAccess(t *testing.T) {
 	t.Cleanup(func() { SetWordList(wordlists.English) })
 
 	lists := [][]string{wordlists.English, wordlists.Spanish}
+	states := make([]*wordListState, len(lists))
+	for listIdx, list := range lists {
+		state := &wordListState{
+			words: list,
+			index: make(map[string]int, len(list)),
+		}
+		for index, word := range list {
+			state.index[word] = index
+		}
+		states[listIdx] = state
+	}
 	var wg sync.WaitGroup
 	errs := make(chan error, 64)
 	stop := make(chan struct{})
@@ -130,11 +141,32 @@ func TestWordListConcurrentAccess(t *testing.T) {
 					errs <- err
 					return
 				}
-				// The list may change between these calls, so only
-				// require that decoding never panics or mixes lists
-				// into a wrong-but-accepted result.
-				if out, err := MnemonicToByteArray(m, true); err == nil && len(out) != 32 {
-					errs <- fmt.Errorf("decoded %d bytes", len(out))
+				// Each possible word-list snapshot may accept the mnemonic,
+				// but any accepted decode must reproduce its source entropy.
+				accepted := false
+				for _, state := range states {
+					out, err := entropyFromMnemonic(state, m)
+					if err == nil {
+						accepted = true
+						if !compareByteSlices(out, entropy) {
+							errs <- fmt.Errorf(
+								"snapshot decode returned %x, want %x",
+								out, entropy,
+							)
+							return
+						}
+					}
+				}
+				if !accepted {
+					errs <- fmt.Errorf("no configured list decoded generated mnemonic %q", m)
+					return
+				}
+				if out, err := MnemonicToByteArray(m, true); err == nil &&
+					!compareByteSlices(out, entropy) {
+					errs <- fmt.Errorf(
+						"concurrent decode returned %x, want %x",
+						out, entropy,
+					)
 					return
 				}
 			}
