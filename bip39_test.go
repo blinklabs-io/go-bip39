@@ -26,7 +26,7 @@ func TestGetWordList(t *testing.T) {
 }
 
 func TestGetWordIndex(t *testing.T) {
-	for expectedIdx, word := range wordList {
+	for expectedIdx, word := range GetWordList() {
 		actualIdx, ok := GetWordIndex(word)
 		assertTrue(t, ok)
 		assertEqual(t, actualIdx, expectedIdx)
