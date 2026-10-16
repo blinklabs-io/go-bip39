@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync/atomic"
+	"unicode"
 
 	"github.com/blinklabs-io/go-bip39/wordlists"
 	"golang.org/x/crypto/pbkdf2"
@@ -51,12 +53,20 @@ var (
 		21: big.NewInt(2),
 	}
 
-	// wordList is the set of words to use
-	wordList = []string{}
-
-	// wordMap is a reverse lookup map for wordList
-	wordMap map[string]int
+	// activeWordList holds the current word list snapshot. A snapshot is
+	// never modified after it is published, so a reader that loads it once
+	// sees one consistent list and reverse index for its whole operation.
+	activeWordList atomic.Pointer[wordListState]
 )
+
+// wordListState is an immutable word list with its reverse index.
+type wordListState struct {
+	words []string
+	index map[string]int
+}
+
+// wordListSize is the number of words BIP-39 requires in a word list.
+const wordListSize = 2048
 
 var (
 	// ErrInvalidMnemonic is returned when trying to use a malformed mnemonic.
@@ -73,33 +83,72 @@ var (
 
 	// ErrChecksumIncorrect is returned when entropy has the incorrect checksum.
 	ErrChecksumIncorrect = errors.New("checksum incorrect")
+
+	// ErrInvalidWordList is returned by ValidateWordList for a list that
+	// cannot back mnemonics.
+	ErrInvalidWordList = errors.New("invalid word list")
 )
 
 func init() {
 	SetWordList(wordlists.English)
 }
 
+// ValidateWordList reports whether list can back mnemonics: exactly 2048
+// words, each non-empty, free of whitespace, in NFKD form, and unique. A word
+// outside NFKD form could never match a mnemonic, which is normalized before
+// lookup, and a word containing whitespace could never survive tokenizing.
+// The position of a word is its 11-bit value, so the order given is kept.
+func ValidateWordList(list []string) error {
+	if len(list) != wordListSize {
+		return fmt.Errorf("%w: has %d words, need %d", ErrInvalidWordList, len(list), wordListSize)
+	}
+	seen := make(map[string]struct{}, len(list))
+	for i, w := range list {
+		if w == "" {
+			return fmt.Errorf("%w: word %d is empty", ErrInvalidWordList, i)
+		}
+		if strings.IndexFunc(w, unicode.IsSpace) >= 0 {
+			return fmt.Errorf("%w: word %d contains whitespace", ErrInvalidWordList, i)
+		}
+		if normalizeString(w) != w {
+			return fmt.Errorf("%w: word %d is not NFKD normalized", ErrInvalidWordList, i)
+		}
+		if _, dup := seen[w]; dup {
+			return fmt.Errorf("%w: word %d is a duplicate", ErrInvalidWordList, i)
+		}
+		seen[w] = struct{}{}
+	}
+	return nil
+}
+
 // SetWordList sets the list of words to use for mnemonics. Currently the list
-// that is set is used package-wide.
+// that is set is used package-wide. The list is copied, so later changes to
+// the caller's slice do not affect the package. A nil list, or one that fails
+// ValidateWordList, is ignored and the current list stays in place. It is safe
+// to call concurrently with every other function in this package.
 func SetWordList(list []string) {
-	if list == nil {
+	if list == nil || ValidateWordList(list) != nil {
 		return
 	}
-	wordList = list
-	wordMap = map[string]int{}
-	for i, v := range wordList {
-		wordMap[v] = i
+	state := &wordListState{
+		words: append([]string(nil), list...),
+		index: make(map[string]int, len(list)),
 	}
+	for i, v := range state.words {
+		state.index[v] = i
+	}
+	activeWordList.Store(state)
 }
 
-// GetWordList gets the list of words to use for mnemonics.
+// GetWordList gets the list of words to use for mnemonics. The result is a
+// copy that the caller may modify freely.
 func GetWordList() []string {
-	return wordList
+	return append([]string(nil), activeWordList.Load().words...)
 }
 
-// GetWordIndex gets word index in wordMap.
+// GetWordIndex gets the index of word in the current word list.
 func GetWordIndex(word string) (int, bool) {
-	idx, ok := wordMap[word]
+	idx, ok := activeWordList.Load().index[word]
 	return idx, ok
 }
 
@@ -122,10 +171,17 @@ func NewEntropy(bitSize int) ([]byte, error) {
 // and returns the input entropy used to generate the given mnemonic.
 // An error is returned if the given mnemonic is invalid.
 func EntropyFromMnemonic(mnemonic string) ([]byte, error) {
+	return entropyFromMnemonic(activeWordList.Load(), mnemonic)
+}
+
+// entropyFromMnemonic decodes mnemonic against one word list snapshot.
+func entropyFromMnemonic(state *wordListState, mnemonic string) ([]byte, error) {
 	mnemonicSlice, isValid := splitMnemonicWords(mnemonic)
 	if !isValid {
 		return nil, ErrInvalidMnemonic
 	}
+
+	wordMap := state.index
 
 	// Decode the words into a big.Int.
 	b := big.NewInt(0)
@@ -194,6 +250,8 @@ func NewMnemonic(entropy []byte) (string, error) {
 	// Entropy as an int so we can bitmask without worrying about bytes slices.
 	entropyInt := new(big.Int).SetBytes(entropy)
 
+	wordList := activeWordList.Load().words
+
 	// Slice to hold words in.
 	words := make([]string, sentenceLength)
 
@@ -233,7 +291,9 @@ func MnemonicToByteArray(mnemonic string, raw ...bool) ([]byte, error) {
 
 	// Pre validate that the mnemonic is well formed and only contains words that
 	// are present in the word list.
-	if !IsMnemonicValid(mnemonic) {
+	state := activeWordList.Load()
+	wordMap := state.index
+	if _, err := entropyFromMnemonic(state, mnemonic); err != nil {
 		return nil, ErrInvalidMnemonic
 	}
 
