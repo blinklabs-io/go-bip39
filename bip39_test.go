@@ -107,7 +107,7 @@ func TestNewEntropy(t *testing.T) {
 func TestMnemonicToByteArrayForDifferentArrayLangths(t *testing.T) {
 	max := 1000
 	for i := 0; i < max; i++ {
-		//16, 20, 24, 28, 32
+		// 16, 20, 24, 28, 32
 		length := 16 + (i%5)*4
 		seed := make([]byte, length)
 		if n, err := rand.Read(seed); err != nil {
@@ -127,6 +127,7 @@ func TestMnemonicToByteArrayForDifferentArrayLangths(t *testing.T) {
 		}
 	}
 }
+
 func TestPadByteSlice(t *testing.T) {
 	assertEqualByteSlices(t, []byte{0}, padByteSlice([]byte{}, 1))
 	assertEqualByteSlices(t, []byte{0, 1}, padByteSlice([]byte{1}, 2))
@@ -236,6 +237,7 @@ func TestMnemonicToByteArrayForZeroLeadingSeeds(t *testing.T) {
 		}
 	}
 }
+
 func TestEntropyFromMnemonic128(t *testing.T) {
 	testEntropyFromMnemonic(t, 128)
 }
