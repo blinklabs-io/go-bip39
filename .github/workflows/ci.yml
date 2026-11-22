@@ -12,7 +12,7 @@ on:
 
 jobs:
   go-test:
-    uses: blinklabs-io/actions/.github/workflows/reuseable-go-test.yml@main
+    uses: blinklabs-io/shared-actions/.github/workflows/reuseable-go-test.yml@7328ad66dec3a12676f5a9d1948fa74946712613
     with:
       nilaway-include-pkgs: github.com/blinklabs-io/go-bip39
       run-golangci-lint: true
@@ -20,7 +20,7 @@ jobs:
   publish:
     needs: [go-test]
     if: github.event_name == 'push' && github.ref_type == 'tag'
-    uses: blinklabs-io/actions/.github/workflows/reuseable-go-library-release.yml@e3dee08bef03cc5e245e18069f48644a6084a4f3
+    uses: blinklabs-io/shared-actions/.github/workflows/reuseable-go-library-release.yml@7328ad66dec3a12676f5a9d1948fa74946712613
     permissions:
       attestations: write
       contents: write
